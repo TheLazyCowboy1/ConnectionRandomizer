@@ -42,7 +42,7 @@ public partial class ConnectionRandomizer
 			[OnlineField]
 			string[] RandomizedRegions;
 			[OnlineField]
-			long[] RegionGenerationTimes; //times of when each region was randomized. If time different, download data
+			ulong[] RegionGenerationTimes; //times of when each region was randomized. If time different, download data
 			[OnlineField]
 			string[] RegionConnectionFiles;
 			[OnlineField]

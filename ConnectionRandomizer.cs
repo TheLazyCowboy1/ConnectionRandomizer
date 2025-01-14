@@ -1288,7 +1288,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
 
     public string LastRandomizedRegion = ""; //used to tell when the "finished randomization" message should be displayed
     public List<string> RandomizedRegions = new(); //used for syncing in Rain Meadow
-    public List<long> RandomizationTimes = new(); //^^^
+    public List<ulong> RandomizationTimes = new(); //^^^
 
     public string[] MirroredRooms = new string[0];
 
@@ -1318,7 +1318,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
         if (IsOnline && !RandomizedRegions.Contains(wl.worldName))
         {
             RandomizedRegions.Add(wl.worldName);
-            RandomizationTimes.Add(DateTime.Now.Ticks);
+            RandomizationTimes.Add(((ulong)DateTime.Now.Ticks));
             AddOnlineData();
         }
 
@@ -1566,7 +1566,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             if (IsOnline && !RandomizedRegions.Contains(wl.worldName))
             {
                 RandomizedRegions.Add(wl.worldName);
-                RandomizationTimes.Add(DateTime.Now.Ticks);
+                RandomizationTimes.Add((ulong)DateTime.Now.Ticks);
                 AddOnlineData();
             }
 
