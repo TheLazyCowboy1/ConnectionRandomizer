@@ -1,3 +1,4 @@
+using BepInEx.Logging;
 using RainMeadow;
 using System;
 using System.Collections.Generic;
@@ -5,23 +6,26 @@ using System.IO;
 using System.Linq;
 
 namespace ConnectionRandomizer;
-
 /**
- * Orignal file by Choc for RegionRandomizer
- * Repurposed for ConnectionRandomizer
- */
-public partial class ConnectionRandomizer
+* Orignal file by Choc for RegionRandomizer
+* Repurposed for ConnectionRandomizer
+*/
+
+internal partial class RainMeadowCompat
 {
-	public static bool meadowEnabled = false;
-	public static bool IsOnline => meadowEnabled && OnlineManager.lobby != null;
+	//public static bool meadowEnabled = false;
+	public static bool IsOnline => OnlineManager.lobby != null;
 	public static bool IsHost => OnlineManager.lobby.isOwner;
 
-	public static RandomizerData onlineData = new();
+    //public static RandomizerData onlineData = new();
+    public static object onlineData = null;
 
 	public static void AddOnlineData()
 	{
 		if (!IsOnline) return;
-		OnlineManager.lobby.AddData(onlineData);
+		onlineData ??= new RandomizerData();
+		OnlineManager.lobby.AddData(onlineData as RandomizerData);
+		ConnectionRandomizer.LogSomething("Added online data");
 	}
 
 	public class RandomizerData : OnlineResource.ResourceData
@@ -70,31 +74,32 @@ public partial class ConnectionRandomizer
 
 				//load all files
 				RegionConnectionFiles = new string[RandomizedRegions.Length];
-                RegionMirrorFiles = new string[RandomizedRegions.Length];
-                RegionMapFiles = new string[RandomizedRegions.Length];
-                //foreach (int i in regionsToUpdate)
-                for (int i = 0; i < RandomizedRegions.Length; i++)
+				RegionMirrorFiles = new string[RandomizedRegions.Length];
+				RegionMapFiles = new string[RandomizedRegions.Length];
+				//foreach (int i in regionsToUpdate)
+				for (int i = 0; i < RandomizedRegions.Length; i++)
 				{
 					try
 					{
 						string region = RandomizedRegions[i], slugcat = ConnectionRandomizer.Instance.CurrentSlugcat;
 						RegionConnectionFiles[i] = File.ReadAllText(ConnectionRandomizer.GetRandomizerConnectionsFile(region, slugcat));
-                        RegionMapFiles[i] = File.ReadAllText(ConnectionRandomizer.GetRandomizerMapFile(region, slugcat));
-                        RegionMirrorFiles[i] = File.ReadAllText(ConnectionRandomizer.GetMirroredRoomsFile(region, slugcat));
+						RegionMapFiles[i] = File.ReadAllText(ConnectionRandomizer.GetRandomizerMapFile(region, slugcat));
+						RegionMirrorFiles[i] = File.ReadAllText(ConnectionRandomizer.GetMirroredRoomsFile(region, slugcat));
 						ConnectionRandomizer.LogSomething("Successfully sent " + region + "-" + slugcat);
-                    } catch (Exception ex) { ConnectionRandomizer.LogSomething(ex); }
+					}
+					catch (Exception ex) { ConnectionRandomizer.LogSomething(ex); }
 				}
 
-            }
+			}
 
 			public override void ReadTo(OnlineResource.ResourceData data, OnlineResource resource)
 			{
 				//ConnectionRandomizer.CustomGateLocks = CustomGateLocksKeys.Zip(CustomGateLocksValues, (k, v) => (k, v)).ToDictionary(x => x.k, x => x.v);
 				ConnectionRandomizer rando = ConnectionRandomizer.Instance;
-				
+
 				rando.RandomizedRegions = RandomizedRegions.ToList();
 
-                //immediately CANCEL any randomization of regions already randomized
+				//immediately CANCEL any randomization of regions already randomized
 				if (rando.RandomizedRegions.Contains(rando.CurrentlyRandomizing))
 				{
 					rando.RandomizerThread?.Abort();
@@ -102,17 +107,17 @@ public partial class ConnectionRandomizer
 				}
 
 
-                //update region files
+				//update region files
 
 				//deetermine which regions to update
-                List<int> regionsToUpdate = new();
-                for (int i = 0; i < rando.RandomizationTimes.Count; i++)
-                {
-                    if (RegionGenerationTimes[i] != rando.RandomizationTimes[i])
-                        regionsToUpdate.Add(i); //update regions with changed times
-                }
-                for (int i = rando.RandomizationTimes.Count; i < RegionGenerationTimes.Length; i++)
-                    regionsToUpdate.Add(i); //update new regions
+				List<int> regionsToUpdate = new();
+				for (int i = 0; i < rando.RandomizationTimes.Count; i++)
+				{
+					if (RegionGenerationTimes[i] != rando.RandomizationTimes[i])
+						regionsToUpdate.Add(i); //update regions with changed times
+				}
+				for (int i = rando.RandomizationTimes.Count; i < RegionGenerationTimes.Length; i++)
+					regionsToUpdate.Add(i); //update new regions
 
 				rando.RandomizationTimes = RegionGenerationTimes.ToList();
 
@@ -123,10 +128,11 @@ public partial class ConnectionRandomizer
 						string region = RandomizedRegions[i];
 						string slugcat = rando.CurrentSlugcat;
 						File.WriteAllText(ConnectionRandomizer.GetRandomizerConnectionsFile(region, slugcat), RegionConnectionFiles[i]);
-                        File.WriteAllText(ConnectionRandomizer.GetRandomizerMapFile(region, slugcat), RegionMapFiles[i]);
-                        File.WriteAllText(ConnectionRandomizer.GetMirroredRoomsFile(region, slugcat), RegionMirrorFiles[i]);
+						File.WriteAllText(ConnectionRandomizer.GetRandomizerMapFile(region, slugcat), RegionMapFiles[i]);
+						File.WriteAllText(ConnectionRandomizer.GetMirroredRoomsFile(region, slugcat), RegionMirrorFiles[i]);
 						ConnectionRandomizer.LogSomething("Downloaded/read files for " + region + slugcat);
-                    } catch (Exception ex) { ConnectionRandomizer.LogSomething(ex); }
+					}
+					catch (Exception ex) { ConnectionRandomizer.LogSomething(ex); }
 				}
 
 				if (rando.RandomizedRegions.Contains(rando.CurrentlyRandomizing))
@@ -141,14 +147,14 @@ public partial class ConnectionRandomizer
 					}
 					rando.ReadRandomizerFiles(rando.CurrentWorldLoader);
 
-                    ConnectionRandomizer.LogSomething("Successfully applied randomizer files for " + rando.CurrentlyRandomizing);
+					ConnectionRandomizer.LogSomething("Successfully applied randomizer files for " + rando.CurrentlyRandomizing);
 
-                    rando.CurrentlyRandomizing = "";
+					rando.CurrentlyRandomizing = "";
 					rando.CurrentWorldLoader.creating_abstract_rooms_finished = true;
-                    rando.CurrentWorldLoader = null; //done
+					rando.CurrentWorldLoader = null; //done
 				}
 
-            }
+			}
 		}
 	}
 }

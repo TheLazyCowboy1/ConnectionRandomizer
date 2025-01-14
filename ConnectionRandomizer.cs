@@ -12,7 +12,6 @@ using Vector2 = UnityEngine.Vector2;
 using IntVector2 = RWCustom.IntVector2;
 using MapObject = DevInterface.MapObject;
 using Custom = RWCustom.Custom;
-using System.Threading.Tasks;
 using HUD;
 using System.Threading;
 
@@ -39,9 +38,9 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
      * 
      * DONE Rewrite scoreDiffWhenConnectionTaken or whatever
      * 
-     * Improve randomization speeds for the first part (connecting notConnected)
+     * DONE Improve randomization speeds for the first part (connecting notConnected)
      * 
-     * Attempt to display a message when first loading a campaign
+     * DONE Attempt to display a message when first loading a campaign
      * 
      * DONE Experiment with mirroring some rooms.
      *  DONE Option 1: a. mirror map image (easy), b. mirror map connections (easy), c. mirror room camera, d. mirror input x direction
@@ -53,6 +52,33 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
      * DONE clear this data when starting a new randomizer campaign
      * add special compatibility with Region Randomizer (how important is this really??)
     */
+
+    #region RainMeadowCompat
+    public static bool meadowEnabled = false;
+    public static bool IsOnline()
+    {
+        try
+        {
+            if (!meadowEnabled) return false;
+            return RainMeadowCompat.IsOnline;
+        }
+        catch { return false; }
+    }// => meadowEnabled && OnlineManager.lobby != null;
+    public static bool IsHost()
+    {
+        try
+        {
+            if (!meadowEnabled) return false;
+            return RainMeadowCompat.IsHost;
+        }
+        catch { return false; }
+    }// => OnlineManager.lobby.isOwner;
+    public static void AddOnlineData()
+    {
+        try { RainMeadowCompat.AddOnlineData(); }
+        catch { }
+    }
+    #endregion
 
     #region Setup
 
@@ -245,7 +271,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
 
         try
         {
-            if (!IsOnline && IgnoredRegion(self.worldName)) //disable ignored regions for Rain Meadow, just to simplify
+            if (!IsOnline() && IgnoredRegion(self.worldName)) //disable ignored regions for Rain Meadow, just to simplify
                 return; //welp, nothing to do here
 
             self.creating_abstract_rooms_finished = false; //NOPE! I've still got stuff to do! I gotta reorder these!
@@ -256,7 +282,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             CurrentWorldLoader = self;
             RandomizerThread = new Thread(() =>
             {
-                if (IsOnline && !IsHost)
+                if (IsOnline() && !IsHost())
                     Thread.Sleep(1000); //wait 1 second for host to go first
 
                 if (NeedToRandomizeRegion(self))
@@ -269,7 +295,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
                     ReadRandomizerFiles(self);
                 //ReadOrCreateRandomizer(self);
 
-                if (IsOnline)
+                if (IsOnline())
                     Thread.Sleep(1000); //adds an extra delay to be extra careful about syncing everything up!
 
                 CurrentlyRandomizing = "";
@@ -1339,7 +1365,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
         ReadMirroredRoomsFile(wl);
 
         //have the randomization data
-        if (IsOnline && !RandomizedRegions.Contains(wl.worldName))
+        if (!RandomizedRegions.Contains(wl.worldName))
         {
             RandomizedRegions.Add(wl.worldName);
             RandomizationTimes.Add(((ulong)DateTime.Now.Ticks));
@@ -1587,7 +1613,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             newConnectibles.Clear();
 
             LastRandomizedRegion = wl.worldName;
-            if (IsOnline && !RandomizedRegions.Contains(wl.worldName))
+            if (!RandomizedRegions.Contains(wl.worldName))
             {
                 RandomizedRegions.Add(wl.worldName);
                 RandomizationTimes.Add((ulong)DateTime.Now.Ticks);
