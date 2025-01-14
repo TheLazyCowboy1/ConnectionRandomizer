@@ -13,6 +13,8 @@ using IntVector2 = RWCustom.IntVector2;
 using MapObject = DevInterface.MapObject;
 using Custom = RWCustom.Custom;
 using System.Threading.Tasks;
+using HUD;
+using System.Threading;
 
 #pragma warning disable CS0618
 
@@ -232,7 +234,8 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
     }
     
     public string CurrentlyRandomizing = "";
-    public Task RandomizerTask = null;
+    //public Task RandomizerTask = null;
+    public Thread RandomizerThread = null;
     public WorldLoader CurrentWorldLoader = null;
     private void WorldLoader_CreatingAbstractRoomsThread(On.WorldLoader.orig_CreatingAbstractRoomsThread orig, WorldLoader self)
     {
@@ -251,7 +254,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             //but wait, now I have all the abstract rooms I need!
             CurrentlyRandomizing = self.worldName;
             CurrentWorldLoader = self;
-            RandomizerTask = new Task(() =>
+            RandomizerThread = new Thread(() =>
             {
                 if (IsOnline && !IsHost)
                     Task.Delay(1000); //wait 1 second for host to go first
@@ -273,7 +276,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
                 self.creating_abstract_rooms_finished = true; //okay, you can move on now
                 CurrentWorldLoader = null;
             });
-            RandomizerTask.Start();
+            RandomizerThread.Start();
         }
         catch (Exception ex)
         {
@@ -306,6 +309,16 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
     private void RainWorldGame_ctor(On.RainWorldGame.orig_ctor orig, RainWorldGame self, ProcessManager manager)
     {
         orig(self, manager);
+
+        //try displaying a randomization finished message
+        if (LastRandomizedRegion != "")
+        {
+            try
+            {
+                self.Players[0].Room.realizedRoom?.NewMessageInRoom("Finished randomizing " + LastRandomizedRegion, 0);
+            }
+            catch (Exception ex) { Logger.LogError(ex); }
+        }
 
         LastRandomizedRegion = "";
 
@@ -1093,6 +1106,8 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
         //Task.Run(() => //making this async just causes bad, in-explicable crashes
         //{
             //Task.Delay(1000);
+        new Thread(() => {
+            Thread.Sleep(1000);
 
             if (world == null)
             {
@@ -1101,7 +1116,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             }
 
             CreateCustomMapImage(world);
-            /*
+            
             if (Futile.atlasManager.DoesContainAtlas("map_" + world.name))
             {
                 Futile.atlasManager.ActuallyUnloadAtlasOrImage("map_" + world.name);
@@ -1110,9 +1125,10 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
 
             foreach (RoomCamera cam in world.game.cameras)
             {
-                cam.hud.ResetMap(new Map.MapData(world.game.world, world.game.rainWorld));
+                if (cam.hud.map != null)
+                    cam.hud.ResetMap(new Map.MapData(world.game.world, world.game.rainWorld));
             }
-            */
+            
             //try displaying a randomization finished message
             try
             {
@@ -1122,7 +1138,8 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             catch (Exception ex) { Logger.LogError(ex); }
 
             //blockMapUpdates = false;
-        //});
+        }).Start();
+
     }
 
     private void WriteRandomizerFiles(WorldLoader wl)

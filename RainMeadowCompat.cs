@@ -55,7 +55,7 @@ public partial class ConnectionRandomizer
 			{
 				RandomizedRegions = ConnectionRandomizer.Instance.RandomizedRegions.ToArray();
 
-				//determine which regions to update
+				//determine which regions to update //nah, instead I'll just store ALL of them
 				/*
 				List<int> regionsToUpdate = new();
 				for (int i = 0; i < RegionGenerationTimes.Length; i++)
@@ -81,6 +81,7 @@ public partial class ConnectionRandomizer
 						RegionConnectionFiles[i] = File.ReadAllText(ConnectionRandomizer.GetRandomizerConnectionsFile(region, slugcat));
                         RegionMapFiles[i] = File.ReadAllText(ConnectionRandomizer.GetRandomizerMapFile(region, slugcat));
                         RegionMirrorFiles[i] = File.ReadAllText(ConnectionRandomizer.GetMirroredRoomsFile(region, slugcat));
+						ConnectionRandomizer.LogSomething("Successfully sent " + region + "-" + slugcat);
                     } catch (Exception ex) { ConnectionRandomizer.LogSomething(ex); }
 				}
 
@@ -96,7 +97,8 @@ public partial class ConnectionRandomizer
                 //immediately CANCEL any randomization of regions already randomized
 				if (rando.RandomizedRegions.Contains(rando.CurrentlyRandomizing))
 				{
-					rando.RandomizerTask?.Dispose();
+					rando.RandomizerThread?.Abort();
+					ConnectionRandomizer.LogSomething("Aborted thread, if it even existed.");
 				}
 
 
@@ -123,13 +125,13 @@ public partial class ConnectionRandomizer
 						File.WriteAllText(ConnectionRandomizer.GetRandomizerConnectionsFile(region, slugcat), RegionConnectionFiles[i]);
                         File.WriteAllText(ConnectionRandomizer.GetRandomizerMapFile(region, slugcat), RegionMapFiles[i]);
                         File.WriteAllText(ConnectionRandomizer.GetMirroredRoomsFile(region, slugcat), RegionMirrorFiles[i]);
+						ConnectionRandomizer.LogSomething("Downloaded/read files for " + region + slugcat);
                     } catch (Exception ex) { ConnectionRandomizer.LogSomething(ex); }
 				}
 
 				if (rando.RandomizedRegions.Contains(rando.CurrentlyRandomizing))
 				{
 					//stop randomizer (partially done above) and load the newly written files
-					rando.CurrentlyRandomizing = "";
 
 					//read and apply files
 					if (rando.CurrentWorldLoader == null)
@@ -139,7 +141,11 @@ public partial class ConnectionRandomizer
 					}
 					rando.ReadRandomizerFiles(rando.CurrentWorldLoader);
 
-					rando.CurrentWorldLoader = null; //done
+                    ConnectionRandomizer.LogSomething("Successfully applied randomizer files for " + rando.CurrentlyRandomizing);
+
+                    rando.CurrentlyRandomizing = "";
+					rando.CurrentWorldLoader.creating_abstract_rooms_finished = true;
+                    rando.CurrentWorldLoader = null; //done
 				}
 
             }
