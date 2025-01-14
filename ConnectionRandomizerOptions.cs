@@ -36,8 +36,8 @@ public class ConnectionRandomizerOptions : OptionInterface
         logicSameConnPenaltyModifier = this.config.Bind<float>("logicSameConnPenaltyModifier", 1f, new ConfigAcceptableRange<float>(0f, 20f));
         logicScorePotentialModifier = this.config.Bind<float>("logicScorePotentialModifier", 1.0f, new ConfigAcceptableRange<float>(0f, 20f));
         logicNextPotentialModifier = this.config.Bind<float>("logicNextPotentialModifier", 0.2f, new ConfigAcceptableRange<float>(0f, 2f));
-        logicPotentialCapModifier = this.config.Bind<int>("logicPotentialCapModifier", 20, new ConfigAcceptableRange<int>(1, 100));
-        logicPotentialConnDistLimit = this.config.Bind<float>("logicPotentialConnDistLimit", 9f, new ConfigAcceptableRange<float>(0.5f, 20f));
+        logicPotentialCapModifier = this.config.Bind<int>("logicPotentialCapModifier", 40, new ConfigAcceptableRange<int>(1, 100));
+        logicPotentialConnDistLimit = this.config.Bind<float>("logicPotentialConnDistLimit", 6f, new ConfigAcceptableRange<float>(0.5f, 20f));
 
     }
 

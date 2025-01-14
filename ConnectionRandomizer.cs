@@ -100,7 +100,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             //On.WorldLoader.CreatingWorld -= WorldLoader_CreatingWorld;
             On.SaveState.ctor -= SaveState_ctor;
 
-            On.HUD.Map.MapData.ctor -= MapData_ctor;
+            //On.HUD.Map.MapData.ctor -= MapData_ctor;
             //On.HUD.Map.LoadConnectionPositions -= Map_LoadConnectionPositions;
             On.OverWorld.WorldLoaded -= OverWorld_WorldLoaded;
             //On.WorldLoader.ReturnWorld -= WorldLoader_ReturnWorld;
@@ -147,7 +147,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             On.SaveState.ctor += SaveState_ctor;
 
             //map patcher
-            On.HUD.Map.MapData.ctor += MapData_ctor;
+            //On.HUD.Map.MapData.ctor += MapData_ctor;
             //On.HUD.Map.LoadConnectionPositions += Map_LoadConnectionPositions;
             On.OverWorld.WorldLoaded += OverWorld_WorldLoaded;
             //On.WorldLoader.CreatingWorld += WorldLoader_CreatingWorld;
@@ -257,7 +257,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             RandomizerThread = new Thread(() =>
             {
                 if (IsOnline && !IsHost)
-                    Task.Delay(1000); //wait 1 second for host to go first
+                    Thread.Sleep(1000); //wait 1 second for host to go first
 
                 if (NeedToRandomizeRegion(self))
                 {
@@ -270,7 +270,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
                 //ReadOrCreateRandomizer(self);
 
                 if (IsOnline)
-                    Task.Delay(1000); //adds an extra delay to be extra careful about syncing everything up!
+                    Thread.Sleep(1000); //adds an extra delay to be extra careful about syncing everything up!
 
                 CurrentlyRandomizing = "";
                 self.creating_abstract_rooms_finished = true; //okay, you can move on now
@@ -300,7 +300,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
         //MapResetWorld = LastRandomizedRegion;
         LastRandomizedRegion = "";
 
-        //CheckIfNewMapNeeded(self.activeWorld);
+        CheckIfNewMapNeeded(self.activeWorld);
     }
     
     //for game startup
@@ -322,7 +322,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
 
         LastRandomizedRegion = "";
 
-        //CheckIfNewMapNeeded(self.world);
+        CheckIfNewMapNeeded(self.world);
     }
 
     //ACTUAL map patcher
@@ -1105,41 +1105,48 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
         //blockMapUpdates = true;
         //Task.Run(() => //making this async just causes bad, in-explicable crashes
         //{
-            //Task.Delay(1000);
-        new Thread(() => {
-            Thread.Sleep(1000);
+        //Task.Delay(1000);
+        try
+        {
+            //Thread mapThread = new Thread(() =>
+            //{
+                //Thread.Sleep(1000);
 
-            if (world == null)
-            {
-                Logger.LogDebug("Error in map generator: null world");
-                return;
-            }
+                if (world == null)
+                {
+                    Logger.LogDebug("Error in map generator: null world");
+                    return;
+                }
 
-            CreateCustomMapImage(world);
-            
-            if (Futile.atlasManager.DoesContainAtlas("map_" + world.name))
-            {
-                Futile.atlasManager.ActuallyUnloadAtlasOrImage("map_" + world.name);
-                Logger.LogDebug("Unloaded previous image atlas; hopefully that fixes it?");
-            }
+                CreateCustomMapImage(world);
 
-            foreach (RoomCamera cam in world.game.cameras)
-            {
-                if (cam.hud.map != null)
-                    cam.hud.ResetMap(new Map.MapData(world.game.world, world.game.rainWorld));
-            }
-            
-            //try displaying a randomization finished message
-            try
-            {
-                //Room realRoom = self.world.GetAbstractRoom(self.startingRoom).realizedRoom;
-                world.game.Players[0].Room.realizedRoom?.NewMessageInRoom("Created map for " + world.name, 0);
-            }
-            catch (Exception ex) { Logger.LogError(ex); }
+                if (Futile.atlasManager.DoesContainAtlas("map_" + world.name))
+                {
+                    Futile.atlasManager.ActuallyUnloadAtlasOrImage("map_" + world.name);
+                    Logger.LogDebug("Unloaded previous image atlas; hopefully that fixes it?");
+                }
 
-            //blockMapUpdates = false;
-        }).Start();
+                foreach (RoomCamera cam in world.game.cameras)
+                {
+                    if (cam?.hud?.map != null)
+                        cam?.hud?.ResetMap(new Map.MapData(world.game.world, world.game.rainWorld));
+                }
 
+                //try displaying a randomization finished message
+                try
+                {
+                    world.game.Players[0].Room.realizedRoom?.NewMessageInRoom("Created map for " + world.name, 0);
+                }
+                catch (Exception ex) { Logger.LogError(ex); }
+
+                //blockMapUpdates = false;
+            //});
+            //mapThread.Start();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex);
+        }
     }
 
     private void WriteRandomizerFiles(WorldLoader wl)

@@ -488,8 +488,8 @@ namespace ConnectionRandomizer
             public const float SAME_CONN_COUNT_PENALTY = 320f; //discourages chains of two-connection-connectibles
             public const float SCORE_POTENTIAL_MODIFIER = 1.0f;
             public const float NEXT_POTENTIAL_SCORE_MODIFIER = 0.2f;
-            public const int POTENTIAL_CONNECTIONS_CAP = 30; //caps the number of potential connections to improve randomization times
-            public const float POTENTIAL_CONN_DIST_LIMIT = 9f;
+            public const int POTENTIAL_CONNECTIONS_CAP = 60; //caps the number of potential connections to improve randomization times
+            public const float POTENTIAL_CONN_DIST_LIMIT = 16f;
             */ //changed to be configs...
             public static float DISTANCE_SCORE_MODIFIER = 10f;
             public static float ORIGINAL_DISTANCE_SCORE_MODIFIER = 5f; //this ought to be a config. Groups rooms together nicely
@@ -501,8 +501,8 @@ namespace ConnectionRandomizer
             public static float SAME_CONN_COUNT_PENALTY = 320f; //discourages chains of two-connection-connectibles
             public static float SCORE_POTENTIAL_MODIFIER = 1.0f;
             public static float NEXT_POTENTIAL_SCORE_MODIFIER = 0.2f;
-            public static int POTENTIAL_CONNECTIONS_CAP = 20; //caps the number of potential connections to improve randomization times
-            public static float POTENTIAL_CONN_DIST_LIMIT = 9f;
+            public static int POTENTIAL_CONNECTIONS_CAP = 40; //caps the number of potential connections to improve randomization times
+            public static float POTENTIAL_CONN_DIST_LIMIT = 6f;
             public static void SetConstants()
             {
                 DISTANCE_SCORE_MODIFIER = 10f * ConnectionRandomizer.Options.logicDistanceModifier.Value;
