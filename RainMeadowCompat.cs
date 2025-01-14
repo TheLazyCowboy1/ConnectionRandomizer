@@ -94,10 +94,9 @@ public partial class ConnectionRandomizer
 				rando.RandomizedRegions = RandomizedRegions.ToList();
 
                 //immediately CANCEL any randomization of regions already randomized
-				if (rando.CurrentlyRandomizing != "" && rando.RandomizedRegions.Contains(rando.CurrentlyRandomizing))
+				if (rando.RandomizedRegions.Contains(rando.CurrentlyRandomizing))
 				{
-					if (rando.RandomizerTask != null)
-						rando.RandomizerTask.Dispose();
+					rando.RandomizerTask?.Dispose();
 				}
 
 
@@ -128,17 +127,20 @@ public partial class ConnectionRandomizer
 				}
 
 				if (rando.RandomizedRegions.Contains(rando.CurrentlyRandomizing))
-                    rando.CurrentlyRandomizing = "";
+				{
+					//stop randomizer (partially done above) and load the newly written files
+					rando.CurrentlyRandomizing = "";
 
-				//read and apply files
-                if (rando.CurrentWorldLoader == null)
-                {
-                    ConnectionRandomizer.LogSomething("Failed to sync randomizer files due to null WorldLoader!");
-                    return;
-                }
-                rando.ReadRandomizerFiles(rando.CurrentWorldLoader);
-				
-				rando.CurrentWorldLoader = null; //done
+					//read and apply files
+					if (rando.CurrentWorldLoader == null)
+					{
+						ConnectionRandomizer.LogSomething("Failed to sync randomizer files due to null WorldLoader!");
+						return;
+					}
+					rando.ReadRandomizerFiles(rando.CurrentWorldLoader);
+
+					rando.CurrentWorldLoader = null; //done
+				}
 
             }
 		}

@@ -7,7 +7,6 @@ using UnityEngine;
 using BepInEx;
 using System.IO;
 using System.Text.RegularExpressions;
-using HUD;
 using static ConnectionRandomizer.LogicalRando;
 using Vector2 = UnityEngine.Vector2;
 using IntVector2 = RWCustom.IntVector2;
@@ -1316,7 +1315,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
         ReadMirroredRoomsFile(wl);
 
         //have the randomization data
-        if (!RandomizedRegions.Contains(wl.worldName))
+        if (IsOnline && !RandomizedRegions.Contains(wl.worldName))
         {
             RandomizedRegions.Add(wl.worldName);
             RandomizationTimes.Add(DateTime.Now.Ticks);
@@ -1564,7 +1563,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             newConnectibles.Clear();
 
             LastRandomizedRegion = wl.worldName;
-            if (!RandomizedRegions.Contains(wl.worldName))
+            if (IsOnline && !RandomizedRegions.Contains(wl.worldName))
             {
                 RandomizedRegions.Add(wl.worldName);
                 RandomizationTimes.Add(DateTime.Now.Ticks);
