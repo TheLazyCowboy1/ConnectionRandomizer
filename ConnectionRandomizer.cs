@@ -22,14 +22,14 @@ using System.Threading;
 
 namespace ConnectionRandomizer;
 
-[BepInDependency("henpemaz.rainmeadow", BepInDependency.DependencyFlags.SoftDependency)]
+[BepInDependency("henpemaz_rainmeadow", BepInDependency.DependencyFlags.SoftDependency)]
 
 [BepInPlugin(MOD_ID, MOD_NAME, MOD_VERSION)]
 public partial class ConnectionRandomizer : BaseUnityPlugin
 {
     public const string MOD_ID = "LazyCowboy.RoomConnectionRandomizer";
     public const string MOD_NAME = "Room Connection Randomizer";
-    public const string MOD_VERSION = "0.0.1";
+    public const string MOD_VERSION = "0.0.2";
     /*
      * TODO Notes:
      * 
@@ -63,7 +63,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             return RainMeadowCompat.IsOnline;
         }
         catch { return false; }
-    }// => meadowEnabled && OnlineManager.lobby != null;
+    }
     public static bool IsHost()
     {
         try
@@ -72,9 +72,10 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             return RainMeadowCompat.IsHost;
         }
         catch { return false; }
-    }// => OnlineManager.lobby.isOwner;
+    }
     public static void AddOnlineData()
     {
+        return;
         try { RainMeadowCompat.AddOnlineData(); }
         catch { }
     }
@@ -126,7 +127,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             //On.WorldLoader.CreatingWorld -= WorldLoader_CreatingWorld;
             On.SaveState.ctor -= SaveState_ctor;
 
-            //On.HUD.Map.MapData.ctor -= MapData_ctor;
+            On.HUD.Map.MapData.ctor -= MapData_ctor;
             //On.HUD.Map.LoadConnectionPositions -= Map_LoadConnectionPositions;
             On.OverWorld.WorldLoaded -= OverWorld_WorldLoaded;
             //On.WorldLoader.ReturnWorld -= WorldLoader_ReturnWorld;
@@ -134,6 +135,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             //On.HUD.Map.Update -= Map_Update;
 
             //On.ShortcutHandler.SpitOutCreature -= ShortcutHandler_SpitOutCreature;
+            On.HUD.Map.InitiateMapView -= Map_InitiateMapView;
 
             //On.RainWorldGame.Update -= RainWorldGame_Update;
 
@@ -173,13 +175,15 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             On.SaveState.ctor += SaveState_ctor;
 
             //map patcher
-            //On.HUD.Map.MapData.ctor += MapData_ctor;
+            On.HUD.Map.MapData.ctor += MapData_ctor;
             //On.HUD.Map.LoadConnectionPositions += Map_LoadConnectionPositions;
             On.OverWorld.WorldLoaded += OverWorld_WorldLoaded;
             //On.WorldLoader.CreatingWorld += WorldLoader_CreatingWorld;
             //On.WorldLoader.ReturnWorld += WorldLoader_ReturnWorld;
             On.RainWorldGame.ctor += RainWorldGame_ctor;
             //On.HUD.Map.Update += Map_Update;
+            //On.ShortcutHandler.SpitOutCreature += ShortcutHandler_SpitOutCreature;
+            On.HUD.Map.InitiateMapView += Map_InitiateMapView;
 
             //On.RainWorldGame.Update += RainWorldGame_Update;
 
@@ -193,8 +197,6 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             On.RoomCamera.DrawUpdate += RoomCameraExtension.RoomCameraDrawUpdateHook;
 
             On.RoomCamera.ChangeRoom += RoomCamera_ChangeRoom;
-
-            //On.ShortcutHandler.SpitOutCreature += ShortcutHandler_SpitOutCreature;
 
 
             //mirror room shader
@@ -220,12 +222,16 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             //detect is Rain Meadow is enabled
             foreach (ModManager.Mod mod in ModManager.ActiveMods)
             {
-                if (mod.id == "henpemaz.rainmeadow")
+                if (mod.id == "henpemaz_rainmeadow")
                 {
                     meadowEnabled = true;
                     break;
                 }
             }
+
+            //Rain Meadow compat hook:
+            if (meadowEnabled)
+                RainMeadowCompat.InitCompat();
 
 
             MachineConnector.SetRegisteredOI(MOD_ID, Options);
@@ -326,7 +332,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
         //MapResetWorld = LastRandomizedRegion;
         LastRandomizedRegion = "";
 
-        CheckIfNewMapNeeded(self.activeWorld);
+        //CheckIfNewMapNeeded(self.activeWorld);
     }
     
     //for game startup
@@ -348,15 +354,15 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
 
         LastRandomizedRegion = "";
 
-        CheckIfNewMapNeeded(self.world);
+        //CheckIfNewMapNeeded(self.world);
     }
 
     //ACTUAL map patcher
     private void MapData_ctor(On.HUD.Map.MapData.orig_ctor orig, HUD.Map.MapData self, World initWorld, RainWorld rainWorld)
     {
-        orig(self, initWorld, rainWorld);
-
         CheckIfNewMapNeeded(initWorld);
+
+        orig(self, initWorld, rainWorld);
     }
     private void CheckIfNewMapNeeded(World world)
     {
@@ -365,11 +371,64 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
             string slugcat = world.game.StoryCharacter.value;
             if (File.Exists(GetRandomizerMapFile(world.name, slugcat)) && !File.Exists(GetRandomizerMapPngFile(world.name, slugcat)))
             {
-                UpdateRegionMap(world);
+                GenerateRegionMap(world);
             }
             else
                 Logger.LogDebug("No need to re-generate map for " + world.name);
         } catch (Exception ex)
+        {
+            Logger.LogError(ex);
+        }
+    }
+    private bool FirstMapResetApplied = false;
+    private void ShortcutHandler_SpitOutCreature(On.ShortcutHandler.orig_SpitOutCreature orig, ShortcutHandler self, ShortcutHandler.ShortCutVessel vessel)
+    {
+        orig(self, vessel);
+
+        if (!FirstMapResetApplied && self.game.world != null)
+        {
+            ResetRegionMap(self.game.world);
+            FirstMapResetApplied = true;
+        }
+    }
+    private void Map_InitiateMapView(On.HUD.Map.orig_InitiateMapView orig, Map self)
+    {
+        orig(self);
+
+        if (!FirstMapResetApplied && self.hud.owner is Player && (self.hud.owner as Player)?.room?.world != null)
+        {
+            ResetRegionMap((self.hud.owner as Player).room.world);
+            FirstMapResetApplied = true;
+        }
+    }
+    public void ResetRegionMap(World world)
+    {
+        try
+        {
+            if (world == null)
+            {
+                Logger.LogDebug("Error in map generator: null world");
+                return;
+            }
+            Logger.LogDebug("Resetting region map for " + world.name);
+
+            //delete old map texture
+            if (Futile.atlasManager.DoesContainAtlas("map_" + world.name))
+            {
+                Futile.atlasManager.ActuallyUnloadAtlasOrImage("map_" + world.name);
+                Logger.LogDebug("Unloaded previous image atlas for " + world.name);
+            }
+
+            foreach (RoomCamera cam in world.game.cameras)
+            {
+                if (cam?.hud?.map != null)
+                {
+                    cam?.hud?.ResetMap(new Map.MapData(world.game.world, world.game.rainWorld));
+                    Logger.LogDebug("Reset map in " + world.name);
+                }
+            }
+        }
+        catch (Exception ex)
         {
             Logger.LogError(ex);
         }
@@ -422,6 +481,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
                 && MirroredRooms.Contains((Custom.rainWorld.processManager.currentMainLoop as RainWorldGame).Players[playerNumber].Room.name))
             {
                 input.x = -input.x;
+                input.downDiagonal = -input.downDiagonal;
                 input.analogueDir.x = -input.analogueDir.x;
             }
             return input;
@@ -1126,48 +1186,32 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
 
     }
 
-    public void UpdateRegionMap(World world)
+    public void GenerateRegionMap(World world)
     {
-        //blockMapUpdates = true;
-        //Task.Run(() => //making this async just causes bad, in-explicable crashes
-        //{
-        //Task.Delay(1000);
         try
         {
-            //Thread mapThread = new Thread(() =>
-            //{
-                //Thread.Sleep(1000);
+            if (world == null)
+            {
+                Logger.LogDebug("Error in map generator: null world");
+                return;
+            }
 
-                if (world == null)
-                {
-                    Logger.LogDebug("Error in map generator: null world");
-                    return;
-                }
+            //delete old map texture
+            if (Futile.atlasManager.DoesContainAtlas("map_" + world.name))
+            {
+                Futile.atlasManager.ActuallyUnloadAtlasOrImage("map_" + world.name);
+                Logger.LogDebug("Unloaded previous image atlas for " + world.name);
+            }
 
-                CreateCustomMapImage(world);
+            CreateCustomMapImage(world);
 
-                if (Futile.atlasManager.DoesContainAtlas("map_" + world.name))
-                {
-                    Futile.atlasManager.ActuallyUnloadAtlasOrImage("map_" + world.name);
-                    Logger.LogDebug("Unloaded previous image atlas; hopefully that fixes it?");
-                }
+            //try displaying a randomization finished message
+            try
+            {
+                world.game.Players[0].Room.realizedRoom?.NewMessageInRoom("Created map for " + world.name, 0);
+            }
+            catch (Exception ex) { Logger.LogError(ex); }
 
-                foreach (RoomCamera cam in world.game.cameras)
-                {
-                    if (cam?.hud?.map != null)
-                        cam?.hud?.ResetMap(new Map.MapData(world.game.world, world.game.rainWorld));
-                }
-
-                //try displaying a randomization finished message
-                try
-                {
-                    world.game.Players[0].Room.realizedRoom?.NewMessageInRoom("Created map for " + world.name, 0);
-                }
-                catch (Exception ex) { Logger.LogError(ex); }
-
-                //blockMapUpdates = false;
-            //});
-            //mapThread.Start();
         }
         catch (Exception ex)
         {
@@ -1635,7 +1679,7 @@ public partial class ConnectionRandomizer : BaseUnityPlugin
     #region Misc_Tools
     public static void LogSomething(object obj)
     {
-        Instance.Logger.LogDebug(obj);
+        Instance.Logger.LogInfo(obj);
     }
 
     private void TestConnectibles()
